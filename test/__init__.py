@@ -1,0 +1,1 @@
+"""Pakiet główny testów aplikacji."""

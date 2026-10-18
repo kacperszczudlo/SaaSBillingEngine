@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto bg-white border border-slate-200 rounded-xl p-8 shadow-sm">
+    <!-- Invoice Header -->
+    <div class="flex justify-between items-start pb-6 border-b border-slate-200 mb-6">
+        <div>
+            <div class="text-[11px] font-mono font-semibold uppercase tracking-wider text-slate-400">Faktura Rozliczeniowa SaaS</div>
+            <h1 class="text-xl font-bold text-slate-900 mt-1 font-mono">INV-{{ subscription.id }}-2026</h1>
+            <p class="text-xs text-slate-500 mt-0.5">Cykl standardowy: 30 dni &bull; Waluta bazowa: {{ subscription.plan.base_price.currency.value }}</p>
+        </div>
+        <div class="text-right">
+            <span class="inline-flex items-center px-2.5 py-1 rounded text-xs font-mono font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                STATUS: ZAKSIĘGOWANO
+            </span>
+            <div class="text-[11px] font-mono text-slate-400 mt-2">Data wystawienia: 2026-10-18</div>
+        </div>
+    </div>
+
+    <!-- Parties Grid -->
+    <div class="grid grid-cols-2 gap-6 text-xs text-slate-600 mb-8 pb-6 border-b border-slate-100">
+        <div>
+            <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Nabywca usługi:</div>
+            <div class="font-semibold text-slate-900 text-sm">{{ subscription.customer_id }}</div>
+            <div class="font-mono text-slate-500 mt-0.5">ID Subskrypcji: {{ subscription.id }}</div>
+        </div>
+        <div class="text-right">
+            <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Wystawca faktury:</div>
+            <div class="font-semibold text-slate-900 text-sm">SaaSBillingEngine Cloud Services</div>
+            <div class="font-mono text-slate-500 mt-0.5">NIP: PL9988776655</div>
+        </div>
+    </div>
+
+    <!-- Line Items Table -->
+    <div class="mb-8">
+        <table class="w-full text-left text-xs text-slate-700">
+            <thead class="bg-slate-50 font-semibold uppercase text-slate-400 border-b border-slate-200 tracking-wider">
+                <tr>
+                    <th class="py-2.5 px-3">Pozycja rozliczenia</th>
+                    <th class="py-2.5 px-3 text-right">Jednostki</th>
+                    <th class="py-2.5 px-3 text-right">Stawka</th>
+                    <th class="py-2.5 px-3 text-right">Wartość brutto</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+                <tr>
+                    <td class="py-3 px-3">
+                        <div class="font-semibold text-slate-900">{{ subscription.plan.name }} &bull; Abonament bazowy</div>
+                        <div class="text-[11px] text-slate-400">Zawiera pakiet {{ subscription.plan.included_requests }} zapytań API</div>
+                    </td>
+                    <td class="py-3 px-3 text-right font-mono">1 mc</td>
+                    <td class="py-3 px-3 text-right font-mono">{{ subscription.plan.base_price }}</td>
+                    <td class="py-3 px-3 text-right font-mono font-medium text-slate-900">{{ subscription.plan.base_price }}</td>
+                </tr>
+                {% if subscription.usage_units > subscription.plan.included_requests %}
+                <tr>
+                    <td class="py-3 px-3">
+                        <div class="font-semibold text-slate-900">Rozliczenie progowe nadmiarowych zapytań (Tiered Strategy)</div>
+                        <div class="text-[11px] text-slate-400">{{ subscription.usage_units - subscription.plan.included_requests }} zapytań ponad limit w planie</div>
+                    </td>
+                    <td class="py-3 px-3 text-right font-mono">{{ subscription.usage_units - subscription.plan.included_requests }} req</td>
+                    <td class="py-3 px-3 text-right font-mono text-slate-500">wg taryfy</td>
+                    <td class="py-3 px-3 text-right font-mono font-medium text-slate-900">
+                        {{ total_bill - subscription.plan.base_price }}
+                    </td>
+                </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Total Summary Strip -->
+    <div class="border-t border-slate-900 pt-4 flex justify-between items-center mb-8">
+        <div>
+            <div class="text-xs text-slate-600">Forma rozliczenia: <span class="font-medium text-slate-900">Automatyczna płatność cykliczna</span></div>
+            <div class="text-xs text-slate-400 font-mono mt-0.5">Status subskrypcji w rejestrze: {{ subscription.status.value }}</div>
+        </div>
+        <div class="text-right">
+            <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Suma należności brutto:</div>
+            <div class="font-mono text-2xl font-bold text-slate-900 tabular-nums">{{ total_bill }}</div>
+        </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="pt-4 border-t border-slate-100 flex justify-between items-center text-xs">
+        <a href="{{ url_for('web.index') }}" class="font-semibold text-slate-600 hover:text-slate-900 transition flex items-center space-x-1">
+            <span>&larr;</span> <span>Powrót do konsoli</span>
+        </a>
+        <button onclick="window.print()" class="px-3 py-1.5 border border-slate-200 rounded font-semibold text-slate-700 hover:bg-slate-50 transition">
+            Drukuj fakturę
+        </button>
+    </div>
+</div>
+{% endblock %}
