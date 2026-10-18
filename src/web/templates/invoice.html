@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto bg-white rounded-2xl p-8 border border-slate-200 shadow-md">
+    <!-- Header -->
+    <div class="flex justify-between items-start border-b border-slate-200 pb-6 mb-6">
+        <div>
+            <span class="text-xs font-bold uppercase tracking-wider text-indigo-600">Faktura Rozliczeniowa SaaS</span>
+            <h1 class="text-2xl font-bold text-slate-900 mt-1">Faktura #INV-{{ subscription.id }}-2026</h1>
+            <p class="text-xs text-slate-500 mt-1">Okres rozliczeniowy: Bieżący miesiąc (30 dni)</p>
+        </div>
+        <div class="text-right">
+            <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800">
+                OPŁACONA
+            </span>
+            <div class="text-xs text-slate-500 mt-2">Data wystawienia: 2026-10-18</div>
+        </div>
+    </div>
+
+    <!-- Client info -->
+    <div class="grid grid-cols-2 gap-4 text-sm text-slate-600 mb-8 pb-6 border-b border-slate-100">
+        <div>
+            <h3 class="font-bold text-slate-900 text-xs uppercase mb-1">Nabywca:</h3>
+            <p class="font-medium text-slate-800">{{ subscription.customer_id }}</p>
+            <p class="text-xs text-slate-500">ID Subskrypcji: {{ subscription.id }}</p>
+        </div>
+        <div class="text-right">
+            <h3 class="font-bold text-slate-900 text-xs uppercase mb-1">Sprzedawca:</h3>
+            <p class="font-medium text-slate-800">SaaSBillingEngine Sp. z o.o.</p>
+            <p class="text-xs text-slate-500">NIP: 123-456-78-90</p>
+        </div>
+    </div>
+
+    <!-- Line items table -->
+    <div class="mb-8">
+        <table class="w-full text-left text-sm text-slate-700">
+            <thead class="bg-slate-50 text-xs font-semibold uppercase text-slate-500 border-b border-slate-200">
+                <tr>
+                    <th class="p-3">Pozycja</th>
+                    <th class="p-3 text-right">Ilość</th>
+                    <th class="p-3 text-right">Cena jedn.</th>
+                    <th class="p-3 text-right">Wartość</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+                <tr>
+                    <td class="p-3">
+                        <div class="font-semibold text-slate-900">{{ subscription.plan.name }} (Abonament bazowy)</div>
+                        <div class="text-xs text-slate-500">Zawiera {{ subscription.plan.included_requests }} zapytań API</div>
+                    </td>
+                    <td class="p-3 text-right">1 mc</td>
+                    <td class="p-3 text-right font-mono">{{ subscription.plan.base_price }}</td>
+                    <td class="p-3 text-right font-mono font-semibold">{{ subscription.plan.base_price }}</td>
+                </tr>
+                {% if subscription.usage_units > subscription.plan.included_requests %}
+                <tr>
+                    <td class="p-3">
+                        <div class="font-semibold text-slate-900">Opłata progowa za nadmiarowe zapytania API</div>
+                        <div class="text-xs text-slate-500">{{ subscription.usage_units - subscription.plan.included_requests }} zapytań ponad limit w planie</div>
+                    </td>
+                    <td class="p-3 text-right">{{ subscription.usage_units - subscription.plan.included_requests }} req</td>
+                    <td class="p-3 text-right font-mono">zgodnie z taryfą</td>
+                    <td class="p-3 text-right font-mono font-semibold">
+                        {{ total_bill - subscription.plan.base_price }}
+                    </td>
+                </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Summary Box -->
+    <div class="border-t-2 border-slate-900 pt-4 flex justify-between items-center mb-8">
+        <div>
+            <span class="text-xs text-slate-500 block">Metoda płatności: Obciążenie cykliczne karty / Kredyt</span>
+            <span class="text-xs text-slate-500">Status subskrypcji: <strong>{{ subscription.status.value }}</strong></span>
+        </div>
+        <div class="text-right">
+            <span class="text-xs text-slate-500 block uppercase font-bold">Łącznie do zapłaty brutto:</span>
+            <span class="text-3xl font-extrabold text-slate-900 font-mono">{{ total_bill }}</span>
+        </div>
+    </div>
+
+    <!-- Back button -->
+    <div class="text-center pt-4">
+        <a href="{{ url_for('web.index') }}" class="text-sm font-semibold text-indigo-600 hover:text-indigo-800 transition">
+            &larr; Powrót do panelu głównego
+        </a>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,270 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="space-y-10">
+
+    <!-- Hero / Header -->
+    <div class="bg-gradient-to-r from-indigo-900 via-indigo-800 to-slate-900 rounded-2xl p-8 text-white shadow-xl">
+        <div class="max-w-3xl">
+            <h1 class="text-3xl font-extrabold tracking-tight sm:text-4xl">Platforma Rozliczeń i Proration SaaS</h1>
+            <p class="mt-3 text-indigo-200 text-lg">
+                Precyzyjna arytmetyka finansowa na typie <code>Decimal</code>, wzorzec <strong>Strategy</strong> dla taryfikacji progowej oraz dynamiczny silnik <strong>Proration</strong> wyliczający proporcjonalny zwrot i dopłatę co do grosza.
+            </p>
+        </div>
+    </div>
+
+    <!-- Simulator Section -->
+    <section id="simulator" class="bg-white rounded-2xl p-8 border border-slate-200 shadow-sm">
+        <div class="flex items-center justify-between border-b border-slate-100 pb-4 mb-6">
+            <div>
+                <h2 class="text-xl font-bold text-slate-900">⚡ Interaktywny Symulator Zmiany Planu (Proration)</h2>
+                <p class="text-sm text-slate-500">Przetestuj na żywo wyliczanie proporcjonalnych dopłat i zwrotów przy migracji w trakcie miesiąca.</p>
+            </div>
+            <span class="text-xs bg-indigo-50 text-indigo-700 px-3 py-1 rounded-full font-semibold">Live Client Engine</span>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            <!-- Controls -->
+            <div class="lg:col-span-5 space-y-5">
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-1">Obecny plan subskrypcyjny:</label>
+                    <select id="simFromPlan" class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-sm font-medium focus:ring-2 focus:ring-indigo-500">
+                        {% for tier, plan in plans.items() %}
+                        <option value="{{ tier.value }}" {% if tier.value == 'STARTER' %}selected{% endif %}>{{ plan.name }} ({{ plan.base_price }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-1">Docelowy plan (migracja):</label>
+                    <select id="simToPlan" class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-sm font-medium focus:ring-2 focus:ring-indigo-500">
+                        {% for tier, plan in plans.items() %}
+                        <option value="{{ tier.value }}" {% if tier.value == 'PRO' %}selected{% endif %}>{{ plan.name }} ({{ plan.base_price }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div>
+                    <div class="flex justify-between text-sm font-semibold text-slate-700 mb-1">
+                        <span>Dzień cyklu rozliczeniowego:</span>
+                        <span id="dayLabel" class="text-indigo-600 font-bold">Dzień 15 z 30</span>
+                    </div>
+                    <input type="range" id="simDaySlider" min="0" max="30" value="15" class="w-full accent-indigo-600 cursor-pointer">
+                    <div class="flex justify-between text-xs text-slate-400 mt-1">
+                        <span>Dzień 0 (Początek)</span>
+                        <span>Dzień 15 (Połowa)</span>
+                        <span>Dzień 30 (Koniec)</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Calculation Output Cards -->
+            <div class="lg:col-span-7 bg-slate-50 rounded-xl p-6 border border-slate-200 flex flex-col justify-between">
+                <h3 class="text-sm font-bold text-slate-700 uppercase tracking-wider mb-4">Podsumowanie rozliczenia proporcjonalnego</h3>
+                
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div class="bg-white p-4 rounded-lg border border-slate-200">
+                        <span class="text-xs text-slate-500 block">Kredyt ze starego planu</span>
+                        <span id="resUnusedCredit" class="text-xl font-bold text-emerald-600">24.50 PLN</span>
+                        <span class="text-xs text-slate-400 block mt-1">za pozostałe dni</span>
+                    </div>
+                    <div class="bg-white p-4 rounded-lg border border-slate-200">
+                        <span class="text-xs text-slate-500 block">Koszt nowego planu</span>
+                        <span id="resNewPlanCharge" class="text-xl font-bold text-slate-800">74.50 PLN</span>
+                        <span class="text-xs text-slate-400 block mt-1">do końca bieżącego cyklu</span>
+                    </div>
+                </div>
+
+                <div class="p-4 bg-indigo-50 rounded-lg border border-indigo-200">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <span class="text-xs font-semibold text-indigo-700 uppercase">Kwota do zapłaty netto:</span>
+                            <div id="resNetAmount" class="text-3xl font-extrabold text-indigo-950">50.00 PLN</div>
+                        </div>
+                        <div id="resBadge" class="bg-indigo-600 text-white text-xs px-3 py-1.5 rounded-full font-semibold">
+                            UPGRADE
+                        </div>
+                    </div>
+                    <p id="resExpl" class="text-xs text-indigo-800 mt-2">Dopłata wyrównująca różnicę planów za pozostałe 15 dni miesiąca.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Plans Catalog Section -->
+    <section id="plans" class="space-y-6">
+        <div>
+            <h2 class="text-xl font-bold text-slate-900">📦 Katalog Dostępnych Planów Subskrypcyjnych</h2>
+            <p class="text-sm text-slate-500">Przejrzyste taryfy z precyzyjnie zdefiniowanym progiem zapytań API.</p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {% for tier, plan in plans.items() %}
+            <div class="bg-white rounded-xl p-6 border {% if tier.value == 'PRO' %}border-indigo-500 shadow-md ring-2 ring-indigo-500/20{% else %}border-slate-200 shadow-sm{% endif %} flex flex-col justify-between">
+                <div>
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="text-xs font-bold uppercase tracking-wider {% if tier.value == 'PRO' %}text-indigo-600{% else %}text-slate-500{% endif %}">{{ plan.tier.value }}</span>
+                        {% if tier.value == 'PRO' %}
+                        <span class="bg-indigo-100 text-indigo-800 text-[10px] font-bold px-2 py-0.5 rounded-full">Najpopularniejszy</span>
+                        {% endif %}
+                    </div>
+                    <h3 class="text-lg font-bold text-slate-900">{{ plan.name }}</h3>
+                    <div class="mt-4 mb-4">
+                        <span class="text-3xl font-extrabold text-slate-900">{{ plan.base_price.amount }}</span>
+                        <span class="text-sm font-medium text-slate-500"> {{ plan.base_price.currency.value }} / mc</span>
+                    </div>
+                    <p class="text-xs text-slate-600 mb-4">{{ plan.description }}</p>
+                    <ul class="text-xs space-y-2 text-slate-600 border-t border-slate-100 pt-3">
+                        <li class="flex items-center">
+                            <span class="text-emerald-500 mr-2 font-bold">✓</span> Do <strong>{{ plan.included_requests }}</strong> zapytań API w cenie
+                        </li>
+                        <li class="flex items-center">
+                            <span class="text-emerald-500 mr-2 font-bold">✓</span> Cennik progowy po przekroczeniu limitu
+                        </li>
+                    </ul>
+                </div>
+
+                <form action="{{ url_for('web.create_subscription') }}" method="POST" class="mt-6 pt-4 border-t border-slate-100">
+                    <input type="hidden" name="plan_tier" value="{{ tier.value }}">
+                    <input type="hidden" name="customer_id" value="Firma-Klient-{{ loop.index }}">
+                    <button type="submit" class="w-full text-center py-2 px-4 rounded-lg text-sm font-semibold {% if tier.value == 'PRO' %}bg-indigo-600 text-white hover:bg-indigo-700{% else %}bg-slate-100 text-slate-800 hover:bg-slate-200{% endif %} transition">
+                        Aktywuj dla Klienta
+                    </button>
+                </form>
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+
+    <!-- Active Subscriptions Table -->
+    <section class="bg-white rounded-2xl p-8 border border-slate-200 shadow-sm space-y-4">
+        <div class="flex items-center justify-between">
+            <div>
+                <h2 class="text-xl font-bold text-slate-900">📋 Aktywne Subskrypcje w Systemie</h2>
+                <p class="text-sm text-slate-500">Zarządzanie stanem, migracja taryf i podgląd faktury.</p>
+            </div>
+            <span class="text-xs bg-slate-100 text-slate-700 px-3 py-1 rounded-full font-semibold">Łącznie: {{ subscriptions|length }}</span>
+        </div>
+
+        {% if subscriptions %}
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-sm text-slate-700">
+                <thead class="bg-slate-50 text-xs font-semibold uppercase text-slate-500 border-b border-slate-200">
+                    <tr>
+                        <th class="p-3">ID Subskrypcji</th>
+                        <th class="p-3">Klient</th>
+                        <th class="p-3">Plan</th>
+                        <th class="p-3">Status</th>
+                        <th class="p-3">Zużycie API</th>
+                        <th class="p-3">Akcje / Migracja</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                    {% for sub in subscriptions %}
+                    <tr class="hover:bg-slate-50 transition">
+                        <td class="p-3 font-mono font-medium text-slate-900">{{ sub.id }}</td>
+                        <td class="p-3 font-medium">{{ sub.customer_id }}</td>
+                        <td class="p-3 font-semibold text-slate-900">{{ sub.plan.name }} ({{ sub.plan.base_price }})</td>
+                        <td class="p-3">
+                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold
+                                {% if sub.status.value == 'ACTIVE' %}bg-emerald-100 text-emerald-800
+                                {% elif sub.status.value == 'PAST_DUE' %}bg-amber-100 text-amber-800
+                                {% elif sub.status.value == 'CANCELLED' %}bg-rose-100 text-rose-800
+                                {% else %}bg-slate-100 text-slate-800{% endif %}">
+                                {{ sub.status.value }}
+                            </span>
+                        </td>
+                        <td class="p-3">{{ sub.usage_units }} / {{ sub.plan.included_requests }}</td>
+                        <td class="p-3 flex items-center space-x-2">
+                            <!-- Link to invoice -->
+                            <a href="{{ url_for('web.view_invoice', subscription_id=sub.id) }}" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-800 px-2.5 py-1.5 rounded transition font-medium">
+                                🧾 Faktura
+                            </a>
+
+                            {% if sub.status.value != 'CANCELLED' %}
+                            <!-- Migrate form -->
+                            <form action="{{ url_for('web.migrate_subscription', subscription_id=sub.id) }}" method="POST" class="inline-flex items-center space-x-1">
+                                <select name="target_tier" class="text-xs border border-slate-300 rounded p-1">
+                                    {% for tier, plan in plans.items() %}
+                                    {% if tier != sub.plan.tier %}
+                                    <option value="{{ tier.value }}">{{ tier.value }}</option>
+                                    {% endif %}
+                                    {% endfor %}
+                                </select>
+                                <input type="hidden" name="current_day" value="15">
+                                <button type="submit" class="text-xs bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-2 py-1 rounded font-medium">
+                                    Migruj
+                                </button>
+                            </form>
+
+                            <!-- Cancel form -->
+                            <form action="{{ url_for('web.cancel_subscription', subscription_id=sub.id) }}" method="POST" class="inline">
+                                <button type="submit" class="text-xs text-rose-600 hover:text-rose-800 font-medium px-2 py-1">
+                                    Anuluj
+                                </button>
+                            </form>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="text-sm text-slate-500 py-4">Brak zarejestrowanych subskrypcji.</p>
+        {% endif %}
+    </section>
+
+</div>
+
+<!-- Client-side script for Live Proration Simulator -->
+<script>
+    const planPrices = {
+        'FREE': 0.00,
+        'STARTER': 49.00,
+        'PRO': 149.00,
+        'ENTERPRISE': 499.00
+    };
+
+    function recalculate() {
+        const fromTier = document.getElementById('simFromPlan').value;
+        const toTier = document.getElementById('simToPlan').value;
+        const day = parseInt(document.getElementById('simDaySlider').value, 10);
+        const totalDays = 30;
+
+        document.getElementById('dayLabel').innerText = `Dzień ${day} z ${totalDays}`;
+
+        const remainingDays = totalDays - day;
+        const ratio = remainingDays / totalDays;
+
+        const oldPrice = planPrices[fromTier] || 0.00;
+        const newPrice = planPrices[toTier] || 0.00;
+
+        const unusedCredit = oldPrice * ratio;
+        const newPlanCharge = newPrice * ratio;
+
+        document.getElementById('resUnusedCredit').innerText = unusedCredit.toFixed(2) + ' PLN';
+        document.getElementById('resNewPlanCharge').innerText = newPlanCharge.toFixed(2) + ' PLN';
+
+        if (newPlanCharge >= unusedCredit) {
+            const netDue = newPlanCharge - unusedCredit;
+            document.getElementById('resNetAmount').innerText = netDue.toFixed(2) + ' PLN';
+            document.getElementById('resBadge').innerText = 'UPGRADE';
+            document.getElementById('resBadge').className = 'bg-indigo-600 text-white text-xs px-3 py-1.5 rounded-full font-semibold';
+            document.getElementById('resExpl').innerText = `Dopłata wyrównująca różnicę taryf za pozostałe ${remainingDays} dni cyklu.`;
+        } else {
+            const creditBal = unusedCredit - newPlanCharge;
+            document.getElementById('resNetAmount').innerText = '0.00 PLN';
+            document.getElementById('resBadge').innerText = 'DOWNGRADE (KREDYT: ' + creditBal.toFixed(2) + ' PLN)';
+            document.getElementById('resBadge').className = 'bg-emerald-600 text-white text-xs px-3 py-1.5 rounded-full font-semibold';
+            document.getElementById('resExpl').innerText = `Klient otrzymuje nadpłatę ${creditBal.toFixed(2)} PLN na poczet kolejnych cykli.`;
+        }
+    }
+
+    document.getElementById('simFromPlan').addEventListener('change', recalculate);
+    document.getElementById('simToPlan').addEventListener('change', recalculate);
+    document.getElementById('simDaySlider').addEventListener('input', recalculate);
+
+    recalculate();
+</script>
+{% endblock %}
