@@ -1,0 +1,1 @@
+"""Pakiet warstwy repozytoriów danych."""
