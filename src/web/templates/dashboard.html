@@ -1,134 +1,184 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="space-y-10">
+<div class="space-y-8">
 
-    <!-- Hero / Header -->
-    <div class="bg-gradient-to-r from-indigo-900 via-indigo-800 to-slate-900 rounded-2xl p-8 text-white shadow-xl">
-        <div class="max-w-3xl">
-            <h1 class="text-3xl font-extrabold tracking-tight sm:text-4xl">Platforma Rozliczeń i Proration SaaS</h1>
-            <p class="mt-3 text-indigo-200 text-lg">
-                Precyzyjna arytmetyka finansowa na typie <code>Decimal</code>, wzorzec <strong>Strategy</strong> dla taryfikacji progowej oraz dynamiczny silnik <strong>Proration</strong> wyliczający proporcjonalny zwrot i dopłatę co do grosza.
+    <!-- Workspace Header & Stats Strip -->
+    <div class="flex flex-col md:flex-row md:items-center justify-between pb-6 border-b border-slate-200 gap-4">
+        <div>
+            <h1 class="text-xl font-bold text-slate-900 tracking-tight">Panel Zarządzania Rozliczeniami SaaS</h1>
+            <p class="text-xs text-slate-500 mt-1">
+                Arytmetyka finansowa na typie <code class="font-mono text-slate-700 bg-slate-100 px-1 py-0.5 rounded">Decimal</code>, wzorce projektowe <strong class="text-slate-700">Strategy</strong> i <strong class="text-slate-700">State</strong>, silnik proporcjonalnego fakturowania.
             </p>
+        </div>
+
+        <div class="flex items-center space-x-3">
+            <div class="bg-white border border-slate-200 rounded-lg px-3.5 py-2 text-right">
+                <span class="text-[10px] uppercase font-semibold text-slate-400 block tracking-wider">Subskrypcje</span>
+                <span class="font-mono text-base font-bold text-slate-900">{{ subscriptions|length }}</span>
+            </div>
+            <div class="bg-white border border-slate-200 rounded-lg px-3.5 py-2 text-right">
+                <span class="text-[10px] uppercase font-semibold text-slate-400 block tracking-wider">Długość cyklu</span>
+                <span class="font-mono text-base font-bold text-slate-900">30 dni</span>
+            </div>
+            <div class="bg-white border border-slate-200 rounded-lg px-3.5 py-2 text-right">
+                <span class="text-[10px] uppercase font-semibold text-slate-400 block tracking-wider">Waluta rozliczeń</span>
+                <span class="font-mono text-base font-bold text-slate-900">PLN</span>
+            </div>
         </div>
     </div>
 
-    <!-- Simulator Section -->
-    <section id="simulator" class="bg-white rounded-2xl p-8 border border-slate-200 shadow-sm">
-        <div class="flex items-center justify-between border-b border-slate-100 pb-4 mb-6">
+    <!-- Proration Workbench (Interactive Console) -->
+    <section id="workbench" class="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+        <div class="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
             <div>
-                <h2 class="text-xl font-bold text-slate-900">⚡ Interaktywny Symulator Zmiany Planu (Proration)</h2>
-                <p class="text-sm text-slate-500">Przetestuj na żywo wyliczanie proporcjonalnych dopłat i zwrotów przy migracji w trakcie miesiąca.</p>
+                <h2 class="text-sm font-semibold text-slate-900 tracking-tight">Kalkulator Rozliczeń Proporcjonalnych (Proration Workbench)</h2>
+                <p class="text-xs text-slate-500">Symulacja migracji taryfy w dowolnym dniu 30-dniowego cyklu rozliczeniowego.</p>
             </div>
-            <span class="text-xs bg-indigo-50 text-indigo-700 px-3 py-1 rounded-full font-semibold">Live Client Engine</span>
+            <span class="text-[11px] font-mono font-medium px-2 py-0.5 rounded bg-slate-200/70 text-slate-700">
+                Deterministyczny silnik domeny
+            </span>
         </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
-            <!-- Controls -->
+        <div class="p-6 grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+            <!-- Left Controls: Plan selection & Day Scrubber -->
             <div class="lg:col-span-5 space-y-5">
-                <div>
-                    <label class="block text-sm font-semibold text-slate-700 mb-1">Obecny plan subskrypcyjny:</label>
-                    <select id="simFromPlan" class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-sm font-medium focus:ring-2 focus:ring-indigo-500">
-                        {% for tier, plan in plans.items() %}
-                        <option value="{{ tier.value }}" {% if tier.value == 'STARTER' %}selected{% endif %}>{{ plan.name }} ({{ plan.base_price }})</option>
-                        {% endfor %}
-                    </select>
-                </div>
-
-                <div>
-                    <label class="block text-sm font-semibold text-slate-700 mb-1">Docelowy plan (migracja):</label>
-                    <select id="simToPlan" class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-sm font-medium focus:ring-2 focus:ring-indigo-500">
-                        {% for tier, plan in plans.items() %}
-                        <option value="{{ tier.value }}" {% if tier.value == 'PRO' %}selected{% endif %}>{{ plan.name }} ({{ plan.base_price }})</option>
-                        {% endfor %}
-                    </select>
-                </div>
-
-                <div>
-                    <div class="flex justify-between text-sm font-semibold text-slate-700 mb-1">
-                        <span>Dzień cyklu rozliczeniowego:</span>
-                        <span id="dayLabel" class="text-indigo-600 font-bold">Dzień 15 z 30</span>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label for="simFromPlan" class="block text-xs font-semibold text-slate-700 mb-1.5 uppercase tracking-wide">
+                            Plan dotychczasowy
+                        </label>
+                        <select id="simFromPlan" class="w-full bg-white border border-slate-300 rounded-md px-3 py-2 text-xs font-medium text-slate-800 focus:outline-none focus:ring-1 focus:ring-slate-900 focus:border-slate-900 transition">
+                            {% for tier, plan in plans.items() %}
+                            <option value="{{ tier.value }}" {% if tier.value == 'STARTER' %}selected{% endif %}>
+                                {{ plan.name }} ({{ plan.base_price }})
+                            </option>
+                            {% endfor %}
+                        </select>
                     </div>
-                    <input type="range" id="simDaySlider" min="0" max="30" value="15" class="w-full accent-indigo-600 cursor-pointer">
-                    <div class="flex justify-between text-xs text-slate-400 mt-1">
+
+                    <div>
+                        <label for="simToPlan" class="block text-xs font-semibold text-slate-700 mb-1.5 uppercase tracking-wide">
+                            Nowy plan (docelowy)
+                        </label>
+                        <select id="simToPlan" class="w-full bg-white border border-slate-300 rounded-md px-3 py-2 text-xs font-medium text-slate-800 focus:outline-none focus:ring-1 focus:ring-slate-900 focus:border-slate-900 transition">
+                            {% for tier, plan in plans.items() %}
+                            <option value="{{ tier.value }}" {% if tier.value == 'PRO' %}selected{% endif %}>
+                                {{ plan.name }} ({{ plan.base_price }})
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Timeline Scrubber -->
+                <div class="pt-2">
+                    <div class="flex justify-between items-center text-xs mb-2">
+                        <span class="font-semibold text-slate-700 uppercase tracking-wide">Dzień zmiany w cyklu:</span>
+                        <span id="dayLabel" class="font-mono font-semibold px-2 py-0.5 rounded bg-slate-100 text-slate-900">Dzień 15 z 30</span>
+                    </div>
+
+                    <input type="range" id="simDaySlider" min="0" max="30" value="15" class="w-full accent-slate-900 cursor-pointer h-1.5 bg-slate-200 rounded-lg">
+
+                    <div class="flex justify-between text-[11px] text-slate-400 font-mono mt-1.5">
                         <span>Dzień 0 (Początek)</span>
                         <span>Dzień 15 (Połowa)</span>
                         <span>Dzień 30 (Koniec)</span>
                     </div>
                 </div>
+
+                <div class="p-3.5 rounded-lg bg-slate-50 border border-slate-200 text-xs text-slate-600 space-y-1">
+                    <div class="font-semibold text-slate-800">Reguła rozliczenia:</div>
+                    <div>Niewykorzystane środki starego planu są natychmiast zaliczane na poczet opłaty za nowy plan na pozostałe dni.</div>
+                </div>
             </div>
 
-            <!-- Calculation Output Cards -->
-            <div class="lg:col-span-7 bg-slate-50 rounded-xl p-6 border border-slate-200 flex flex-col justify-between">
-                <h3 class="text-sm font-bold text-slate-700 uppercase tracking-wider mb-4">Podsumowanie rozliczenia proporcjonalnego</h3>
-                
-                <div class="grid grid-cols-2 gap-4 mb-4">
-                    <div class="bg-white p-4 rounded-lg border border-slate-200">
-                        <span class="text-xs text-slate-500 block">Kredyt ze starego planu</span>
-                        <span id="resUnusedCredit" class="text-xl font-bold text-emerald-600">24.50 PLN</span>
-                        <span class="text-xs text-slate-400 block mt-1">za pozostałe dni</span>
+            <!-- Right Output: Financial Ledger Summary -->
+            <div class="lg:col-span-7 bg-slate-50/70 border border-slate-200 rounded-lg p-5 flex flex-col justify-between">
+                <div class="flex items-center justify-between pb-3 border-b border-slate-200 mb-4">
+                    <span class="text-xs font-bold uppercase tracking-wider text-slate-600">Rozbicie księgowe (Ledger)</span>
+                    <span id="resBadge" class="text-[11px] font-mono font-semibold px-2.5 py-0.5 rounded bg-slate-900 text-white">
+                        UPGRADE
+                    </span>
+                </div>
+
+                <div class="space-y-3 text-xs mb-5">
+                    <div class="flex justify-between items-center py-1">
+                        <span class="text-slate-600">Kredyt za niewykorzystane dni starego planu:</span>
+                        <span id="resUnusedCredit" class="font-mono font-semibold text-emerald-700 text-sm">24.50 PLN</span>
                     </div>
-                    <div class="bg-white p-4 rounded-lg border border-slate-200">
-                        <span class="text-xs text-slate-500 block">Koszt nowego planu</span>
-                        <span id="resNewPlanCharge" class="text-xl font-bold text-slate-800">74.50 PLN</span>
-                        <span class="text-xs text-slate-400 block mt-1">do końca bieżącego cyklu</span>
+                    <div class="flex justify-between items-center py-1">
+                        <span class="text-slate-600">Koszt nowego planu za pozostały okres:</span>
+                        <span id="resNewPlanCharge" class="font-mono font-semibold text-slate-900 text-sm">74.50 PLN</span>
+                    </div>
+                    <div class="flex justify-between items-center py-1 text-slate-500 font-mono text-[11px]">
+                        <span>Pozostało dni w cyklu:</span>
+                        <span id="resDaysLeft">15 dni</span>
                     </div>
                 </div>
 
-                <div class="p-4 bg-indigo-50 rounded-lg border border-indigo-200">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <span class="text-xs font-semibold text-indigo-700 uppercase">Kwota do zapłaty netto:</span>
-                            <div id="resNetAmount" class="text-3xl font-extrabold text-indigo-950">50.00 PLN</div>
-                        </div>
-                        <div id="resBadge" class="bg-indigo-600 text-white text-xs px-3 py-1.5 rounded-full font-semibold">
-                            UPGRADE
-                        </div>
+                <div class="pt-4 border-t border-slate-200 flex items-center justify-between">
+                    <div>
+                        <span class="text-[11px] uppercase font-semibold text-slate-500 block">Kwota do uregulowania netto</span>
+                        <span id="resExplanation" class="text-[11px] text-slate-500">Dopłata wyrównująca do końca okresu.</span>
                     </div>
-                    <p id="resExpl" class="text-xs text-indigo-800 mt-2">Dopłata wyrównująca różnicę planów za pozostałe 15 dni miesiąca.</p>
+                    <div class="text-right">
+                        <span id="resNetAmount" class="font-mono text-2xl font-bold text-slate-900 tabular-nums">50.00 PLN</span>
+                    </div>
                 </div>
             </div>
         </div>
     </section>
 
-    <!-- Plans Catalog Section -->
-    <section id="plans" class="space-y-6">
-        <div>
-            <h2 class="text-xl font-bold text-slate-900">📦 Katalog Dostępnych Planów Subskrypcyjnych</h2>
-            <p class="text-sm text-slate-500">Przejrzyste taryfy z precyzyjnie zdefiniowanym progiem zapytań API.</p>
+    <!-- Plans Catalog Grid -->
+    <section id="plans" class="space-y-4">
+        <div class="flex items-center justify-between">
+            <div>
+                <h2 class="text-sm font-bold text-slate-900 uppercase tracking-wider">Katalog Taryf Subskrypcyjnych</h2>
+                <p class="text-xs text-slate-500">Zdefiniowane poziomy usług wraz z limitami zapytań API w cenie.</p>
+            </div>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {% for tier, plan in plans.items() %}
-            <div class="bg-white rounded-xl p-6 border {% if tier.value == 'PRO' %}border-indigo-500 shadow-md ring-2 ring-indigo-500/20{% else %}border-slate-200 shadow-sm{% endif %} flex flex-col justify-between">
+            <div class="bg-white border border-slate-200 rounded-xl p-5 flex flex-col justify-between hover:border-slate-300 transition">
                 <div>
-                    <div class="flex justify-between items-center mb-2">
-                        <span class="text-xs font-bold uppercase tracking-wider {% if tier.value == 'PRO' %}text-indigo-600{% else %}text-slate-500{% endif %}">{{ plan.tier.value }}</span>
+                    <div class="flex justify-between items-center mb-3">
+                        <span class="text-xs font-mono font-semibold px-2 py-0.5 rounded bg-slate-100 text-slate-700">
+                            {{ plan.tier.value }}
+                        </span>
                         {% if tier.value == 'PRO' %}
-                        <span class="bg-indigo-100 text-indigo-800 text-[10px] font-bold px-2 py-0.5 rounded-full">Najpopularniejszy</span>
+                        <span class="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded bg-slate-900 text-white">
+                            Standard
+                        </span>
                         {% endif %}
                     </div>
-                    <h3 class="text-lg font-bold text-slate-900">{{ plan.name }}</h3>
-                    <div class="mt-4 mb-4">
-                        <span class="text-3xl font-extrabold text-slate-900">{{ plan.base_price.amount }}</span>
-                        <span class="text-sm font-medium text-slate-500"> {{ plan.base_price.currency.value }} / mc</span>
+
+                    <h3 class="font-bold text-slate-900 text-sm">{{ plan.name }}</h3>
+                    <div class="my-3">
+                        <span class="font-mono text-2xl font-bold text-slate-900">{{ plan.base_price.amount }}</span>
+                        <span class="text-xs text-slate-500 font-mono"> {{ plan.base_price.currency.value }} / mc</span>
                     </div>
-                    <p class="text-xs text-slate-600 mb-4">{{ plan.description }}</p>
-                    <ul class="text-xs space-y-2 text-slate-600 border-t border-slate-100 pt-3">
-                        <li class="flex items-center">
-                            <span class="text-emerald-500 mr-2 font-bold">✓</span> Do <strong>{{ plan.included_requests }}</strong> zapytań API w cenie
-                        </li>
-                        <li class="flex items-center">
-                            <span class="text-emerald-500 mr-2 font-bold">✓</span> Cennik progowy po przekroczeniu limitu
-                        </li>
-                    </ul>
+
+                    <p class="text-xs text-slate-500 leading-relaxed mb-4 min-h-[32px]">{{ plan.description }}</p>
+
+                    <div class="border-t border-slate-100 pt-3 text-xs space-y-1.5 text-slate-600">
+                        <div class="flex justify-between">
+                            <span class="text-slate-400">Limit w cenie:</span>
+                            <span class="font-mono font-medium text-slate-800">{{ plan.included_requests }} req</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-slate-400">Taryfikacja:</span>
+                            <span class="font-medium text-slate-800">Progowo (Strategy)</span>
+                        </div>
+                    </div>
                 </div>
 
-                <form action="{{ url_for('web.create_subscription') }}" method="POST" class="mt-6 pt-4 border-t border-slate-100">
+                <form action="{{ url_for('web.create_subscription') }}" method="POST" class="mt-5 pt-3 border-t border-slate-100">
                     <input type="hidden" name="plan_tier" value="{{ tier.value }}">
-                    <input type="hidden" name="customer_id" value="Firma-Klient-{{ loop.index }}">
-                    <button type="submit" class="w-full text-center py-2 px-4 rounded-lg text-sm font-semibold {% if tier.value == 'PRO' %}bg-indigo-600 text-white hover:bg-indigo-700{% else %}bg-slate-100 text-slate-800 hover:bg-slate-200{% endif %} transition">
-                        Aktywuj dla Klienta
+                    <input type="hidden" name="customer_id" value="Klient-{{ tier.value }}-{{ loop.index }}">
+                    <button type="submit" class="w-full text-center py-2 px-3 rounded-md text-xs font-semibold bg-slate-900 text-white hover:bg-slate-800 transition">
+                        Aktywuj subskrypcję
                     </button>
                 </form>
             </div>
@@ -136,55 +186,61 @@
         </div>
     </section>
 
-    <!-- Active Subscriptions Table -->
-    <section class="bg-white rounded-2xl p-8 border border-slate-200 shadow-sm space-y-4">
-        <div class="flex items-center justify-between">
+    <!-- Subscriptions Data Table -->
+    <section id="subscriptions" class="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+        <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center">
             <div>
-                <h2 class="text-xl font-bold text-slate-900">📋 Aktywne Subskrypcje w Systemie</h2>
-                <p class="text-sm text-slate-500">Zarządzanie stanem, migracja taryf i podgląd faktury.</p>
+                <h2 class="text-sm font-semibold text-slate-900 tracking-tight">Aktywne Subskrypcje Klientów</h2>
+                <p class="text-xs text-slate-500">Zarządzanie instancjami subskrypcji w pamięci operacyjnej.</p>
             </div>
-            <span class="text-xs bg-slate-100 text-slate-700 px-3 py-1 rounded-full font-semibold">Łącznie: {{ subscriptions|length }}</span>
+            <span class="text-xs font-mono text-slate-500">Rejestr: {{ subscriptions|length }}</span>
         </div>
 
         {% if subscriptions %}
         <div class="overflow-x-auto">
-            <table class="w-full text-left text-sm text-slate-700">
-                <thead class="bg-slate-50 text-xs font-semibold uppercase text-slate-500 border-b border-slate-200">
+            <table class="w-full text-left text-xs text-slate-700">
+                <thead class="bg-slate-50/80 font-semibold uppercase text-slate-400 border-b border-slate-200 tracking-wider">
                     <tr>
-                        <th class="p-3">ID Subskrypcji</th>
-                        <th class="p-3">Klient</th>
-                        <th class="p-3">Plan</th>
-                        <th class="p-3">Status</th>
-                        <th class="p-3">Zużycie API</th>
-                        <th class="p-3">Akcje / Migracja</th>
+                        <th class="py-3 px-4">Identyfikator</th>
+                        <th class="py-3 px-4">Klient</th>
+                        <th class="py-3 px-4">Przypisany Plan</th>
+                        <th class="py-3 px-4">Status</th>
+                        <th class="py-3 px-4">Wykorzystanie API</th>
+                        <th class="py-3 px-4 text-right">Działania</th>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-slate-100">
+                <tbody class="divide-y divide-slate-100 font-sans">
                     {% for sub in subscriptions %}
-                    <tr class="hover:bg-slate-50 transition">
-                        <td class="p-3 font-mono font-medium text-slate-900">{{ sub.id }}</td>
-                        <td class="p-3 font-medium">{{ sub.customer_id }}</td>
-                        <td class="p-3 font-semibold text-slate-900">{{ sub.plan.name }} ({{ sub.plan.base_price }})</td>
-                        <td class="p-3">
-                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold
-                                {% if sub.status.value == 'ACTIVE' %}bg-emerald-100 text-emerald-800
-                                {% elif sub.status.value == 'PAST_DUE' %}bg-amber-100 text-amber-800
-                                {% elif sub.status.value == 'CANCELLED' %}bg-rose-100 text-rose-800
-                                {% else %}bg-slate-100 text-slate-800{% endif %}">
+                    <tr class="hover:bg-slate-50/80 transition">
+                        <td class="py-3 px-4 font-mono font-medium text-slate-900">{{ sub.id }}</td>
+                        <td class="py-3 px-4 font-medium text-slate-800">{{ sub.customer_id }}</td>
+                        <td class="py-3 px-4">
+                            <span class="font-medium text-slate-900">{{ sub.plan.name }}</span>
+                            <span class="font-mono text-slate-400 text-[11px] block">{{ sub.plan.base_price }}</span>
+                        </td>
+                        <td class="py-3 px-4">
+                            <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-mono font-semibold
+                                {% if sub.status.value == 'ACTIVE' %}bg-emerald-50 text-emerald-700 border border-emerald-200
+                                {% elif sub.status.value == 'PAST_DUE' %}bg-amber-50 text-amber-700 border border-amber-200
+                                {% elif sub.status.value == 'CANCELLED' %}bg-rose-50 text-rose-700 border border-rose-200
+                                {% else %}bg-slate-100 text-slate-700 border border-slate-200{% endif %}">
                                 {{ sub.status.value }}
                             </span>
                         </td>
-                        <td class="p-3">{{ sub.usage_units }} / {{ sub.plan.included_requests }}</td>
-                        <td class="p-3 flex items-center space-x-2">
-                            <!-- Link to invoice -->
-                            <a href="{{ url_for('web.view_invoice', subscription_id=sub.id) }}" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-800 px-2.5 py-1.5 rounded transition font-medium">
-                                🧾 Faktura
+                        <td class="py-3 px-4 font-mono">
+                            <div class="flex items-center space-x-2">
+                                <span class="font-medium text-slate-900">{{ sub.usage_units }}</span>
+                                <span class="text-slate-400">/ {{ sub.plan.included_requests }} req</span>
+                            </div>
+                        </td>
+                        <td class="py-3 px-4 text-right space-x-1.5">
+                            <a href="{{ url_for('web.view_invoice', subscription_id=sub.id) }}" class="inline-block text-[11px] font-semibold border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 px-2.5 py-1 rounded transition">
+                                Faktura
                             </a>
 
                             {% if sub.status.value != 'CANCELLED' %}
-                            <!-- Migrate form -->
                             <form action="{{ url_for('web.migrate_subscription', subscription_id=sub.id) }}" method="POST" class="inline-flex items-center space-x-1">
-                                <select name="target_tier" class="text-xs border border-slate-300 rounded p-1">
+                                <select name="target_tier" class="text-[11px] border border-slate-200 rounded px-1.5 py-1 bg-white">
                                     {% for tier, plan in plans.items() %}
                                     {% if tier != sub.plan.tier %}
                                     <option value="{{ tier.value }}">{{ tier.value }}</option>
@@ -192,14 +248,13 @@
                                     {% endfor %}
                                 </select>
                                 <input type="hidden" name="current_day" value="15">
-                                <button type="submit" class="text-xs bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-2 py-1 rounded font-medium">
+                                <button type="submit" class="text-[11px] font-semibold bg-slate-100 hover:bg-slate-200 text-slate-800 px-2 py-1 rounded transition">
                                     Migruj
                                 </button>
                             </form>
 
-                            <!-- Cancel form -->
                             <form action="{{ url_for('web.cancel_subscription', subscription_id=sub.id) }}" method="POST" class="inline">
-                                <button type="submit" class="text-xs text-rose-600 hover:text-rose-800 font-medium px-2 py-1">
+                                <button type="submit" class="text-[11px] font-semibold text-rose-600 hover:text-rose-800 px-2 py-1 transition">
                                     Anuluj
                                 </button>
                             </form>
@@ -211,13 +266,15 @@
             </table>
         </div>
         {% else %}
-        <p class="text-sm text-slate-500 py-4">Brak zarejestrowanych subskrypcji.</p>
+        <div class="p-8 text-center text-xs text-slate-400">
+            Brak zarejestrowanych subskrypcji w systemie.
+        </div>
         {% endif %}
     </section>
 
 </div>
 
-<!-- Client-side script for Live Proration Simulator -->
+<!-- Client-side script for Live Proration Workbench -->
 <script>
     const planPrices = {
         'FREE': 0.00,
@@ -245,19 +302,20 @@
 
         document.getElementById('resUnusedCredit').innerText = unusedCredit.toFixed(2) + ' PLN';
         document.getElementById('resNewPlanCharge').innerText = newPlanCharge.toFixed(2) + ' PLN';
+        document.getElementById('resDaysLeft').innerText = `${remainingDays} dni`;
 
         if (newPlanCharge >= unusedCredit) {
             const netDue = newPlanCharge - unusedCredit;
             document.getElementById('resNetAmount').innerText = netDue.toFixed(2) + ' PLN';
-            document.getElementById('resBadge').innerText = 'UPGRADE';
-            document.getElementById('resBadge').className = 'bg-indigo-600 text-white text-xs px-3 py-1.5 rounded-full font-semibold';
-            document.getElementById('resExpl').innerText = `Dopłata wyrównująca różnicę taryf za pozostałe ${remainingDays} dni cyklu.`;
+            document.getElementById('resBadge').innerText = 'UPGRADE (DOPŁATA)';
+            document.getElementById('resBadge').className = 'text-[11px] font-mono font-semibold px-2.5 py-0.5 rounded bg-slate-900 text-white';
+            document.getElementById('resExplanation').innerText = `Dopłata wyrównująca różnicę taryf za ${remainingDays} dni.`;
         } else {
             const creditBal = unusedCredit - newPlanCharge;
             document.getElementById('resNetAmount').innerText = '0.00 PLN';
-            document.getElementById('resBadge').innerText = 'DOWNGRADE (KREDYT: ' + creditBal.toFixed(2) + ' PLN)';
-            document.getElementById('resBadge').className = 'bg-emerald-600 text-white text-xs px-3 py-1.5 rounded-full font-semibold';
-            document.getElementById('resExpl').innerText = `Klient otrzymuje nadpłatę ${creditBal.toFixed(2)} PLN na poczet kolejnych cykli.`;
+            document.getElementById('resBadge').innerText = 'DOWNGRADE (KREDYT)';
+            document.getElementById('resBadge').className = 'text-[11px] font-mono font-semibold px-2.5 py-0.5 rounded bg-emerald-700 text-white';
+            document.getElementById('resExplanation').innerText = `Klient otrzymuje nadpłatę ${creditBal.toFixed(2)} PLN na poczet przyszłych cykli.`;
         }
     }
 

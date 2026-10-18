@@ -1,48 +1,89 @@
 <!DOCTYPE html>
-<html lang="pl">
+<html lang="pl" class="h-full bg-slate-50">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}SaaSBillingEngine — System Rozliczeń SaaS{% endblock %}</title>
+    <title>{% block title %}SaaSBillingEngine &bull; Subscription & Proration Console{% endblock %}</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'Menlo', 'Monaco', 'Courier New', 'monospace'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#f0f5ff',
+                            100: '#e5edff',
+                            500: '#3b66ff',
+                            600: '#1e40af',
+                            700: '#1d3557',
+                            900: '#0f172a',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
     <style>
-        body { font-family: 'Inter', sans-serif; }
+        .tabular-nums { font-variant-numeric: tabular-nums; }
     </style>
 </head>
-<body class="bg-slate-50 text-slate-800 antialiased min-h-screen flex flex-col justify-between">
-    <!-- Navbar -->
-    <header class="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-sm">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-            <div class="flex items-center space-x-3">
-                <span class="p-2 bg-indigo-600 text-white rounded-lg font-bold text-lg shadow-sm">⚡</span>
-                <div>
-                    <a href="{{ url_for('web.index') }}" class="font-bold text-xl text-slate-900 tracking-tight hover:text-indigo-600 transition">SaaSBillingEngine</a>
-                    <span class="text-xs text-slate-500 block">System rozliczeń subskrypcyjnych SaaS</span>
-                </div>
+<body class="min-h-full flex flex-col font-sans text-slate-800 antialiased selection:bg-slate-200">
+
+    <!-- Top Navigation Bar -->
+    <header class="border-b border-slate-200 bg-white sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between">
+            <div class="flex items-center space-x-6">
+                <a href="{{ url_for('web.index') }}" class="flex items-center space-x-2.5 group">
+                    <span class="w-6 h-6 rounded bg-slate-900 text-white flex items-center justify-center font-bold text-xs tracking-tighter shadow-sm group-hover:bg-slate-800 transition">
+                        SB
+                    </span>
+                    <span class="font-semibold text-slate-900 text-sm tracking-tight group-hover:text-slate-700 transition">
+                        SaaSBillingEngine
+                    </span>
+                </a>
+                <nav class="hidden md:flex items-center space-x-4 text-xs font-medium text-slate-500">
+                    <span class="text-slate-300">/</span>
+                    <a href="{{ url_for('web.index') }}" class="text-slate-900 font-semibold hover:text-slate-900 transition">Konsola Główna</a>
+                    <a href="#workbench" class="hover:text-slate-900 transition">Kalkulator Proration</a>
+                    <a href="#plans" class="hover:text-slate-900 transition">Taryfy</a>
+                    <a href="#subscriptions" class="hover:text-slate-900 transition">Baza Subskrypcji</a>
+                </nav>
             </div>
-            <div class="flex items-center space-x-4 text-sm font-medium">
-                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800">
-                    Aktywny silnik v1.0
-                </span>
-                <a href="#simulator" class="text-slate-600 hover:text-indigo-600 transition">Symulator Proration</a>
-                <a href="#plans" class="text-slate-600 hover:text-indigo-600 transition">Katalog Planów</a>
+
+            <div class="flex items-center space-x-4 text-xs">
+                <div class="flex items-center space-x-1.5 px-2.5 py-1 rounded-md bg-slate-100 text-slate-600 font-mono">
+                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <span>API Online (v1.0)</span>
+                </div>
+                <div class="text-slate-400 font-mono hidden sm:block">
+                    Inżynieria TiJO II
+                </div>
             </div>
         </div>
     </header>
 
-    <!-- Main Content -->
+    <!-- Main Workspace -->
     <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-grow w-full">
         {% block content %}{% endblock %}
     </main>
 
-    <!-- Footer -->
-    <footer class="bg-white border-t border-slate-200 py-6 mt-12 text-center text-sm text-slate-500">
-        <div class="max-w-7xl mx-auto px-4">
-            <p><strong>SaaSBillingEngine</strong> &bull; Projekt z kursu <em>Testowanie i Jakość Oprogramowania</em> &bull; Autor: Kacper Szczudło</p>
+    <!-- Professional Footer -->
+    <footer class="border-t border-slate-200 bg-white py-5 text-xs text-slate-500 mt-16">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row justify-between items-center gap-2">
+            <div>
+                <span class="font-medium text-slate-700">SaaSBillingEngine</span> &bull; Deterministyczny silnik rozliczeń subskrypcyjnych i fakturowania
+            </div>
+            <div class="font-mono text-slate-400">
+                Autor: Kacper Szczudło &bull; Katedra Informatyki AT
+            </div>
         </div>
     </footer>
 </body>
