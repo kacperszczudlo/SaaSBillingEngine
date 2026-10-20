@@ -76,3 +76,11 @@ class TestPricingStrategy(unittest.TestCase):
         # Act & Assert
         with self.assertRaises(ValueError):
             self.tiered_strategy.calculate_total(self.starter_plan, negative_usage)
+
+    def test_should_raise_value_error_when_flat_rate_usage_units_is_negative(self):
+        # Arrange
+        negative_usage = -10
+
+        # Act & Assert
+        with self.assertRaises(ValueError):
+            self.flat_strategy.calculate_total(self.starter_plan, negative_usage)
