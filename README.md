@@ -84,22 +84,120 @@ Aplikacja dostępna jest w przeglądarce pod adresem:
 
 ## Testy
 
-System posiada kompleksowy zestaw testów automatycznych zorganizowany z podziałem na warstwy:
-* **Testy jednostkowe (`test/unit/`):** Testy domeny finansowej `Money`, wzorców `PricingStrategy`, silnika `ProrationEngine`, maszyny stanów `Subscription` oraz repozytorium `InMemory`.
-* **Testy integracyjne (`test/integration/`):** Testy tras i kontrolerów Flask (`test_client`) weryfikujące obsługę żądań HTTP, kody statusu (200, 400, 404, 422) oraz endpointy REST API.
+System posiada kompleksowy zestaw **84 testów automatycznych** (68 jednostkowych + 16 integracyjnych) ustandaryzowanych według konwencji **AAA (Arrange-Act-Assert)** z jedną logiczną asercją na test.
 
-### Uruchomienie wszystkich testów
+### 1. Testy jednostkowe (`test/unit/`)
+Wszystkie testy jednostkowe badają logikę biznesową w pełnej izolacji, bez udziału operacji wejścia/wyjścia czy bazy danych:
+
+* **[test/unit/test_money.py](test/unit/test_money.py) (23 testy):**
+  * Weryfikacja niezmienności obiektu wartości `Money` i precyzyjnego zaokrąglenia `ROUND_HALF_UP` do 2 miejsc po przecinku.
+  * Blokada użycia typu zmiennoprzecinkowego `float` (`TypeError`).
+  * Pełna arytmetyka: dodawanie, odejmowanie, mnożenie przez skalar (`Decimal`/`int`) oraz mnożenie lewostronne (`rmul`).
+  * Pełen zestaw operatorów porównania: `<`, `<=`, `>`, `>=` z obsługą walidacji typu (`NotImplemented`).
+  * Walidacja niezgodności walut przy próbie sumowania lub porównywania (`ValueError`).
+  * Formatowanie czytelnego łańcucha znaków (`123.45 PLN`).
+
+* **[test/unit/test_plan.py](test/unit/test_plan.py) (4 testy):**
+  * Poprawne tworzenie planu subskrypcyjnego z parametrami bazowymi.
+  * Walidacja typu poziomu planu (`PlanTier`).
+  * Walidacja typu ceny bazowej (wymóg instancji `Money`).
+  * Zabezpieczenie przed ujemną liczbą zapytań w cenie (`ValueError`).
+
+* **[test/unit/test_subscription.py](test/unit/test_subscription.py) (13 testów):**
+  * Domyślna inicjalizacja subskrypcji w stanie początkowym `TRIAL`.
+  * Dozwolone przejścia stanów cyklu życia: `TRIAL` &rarr; `ACTIVE` &rarr; `PAST_DUE` &rarr; `ACTIVE` oraz anulowanie do `CANCELLED`.
+  * Idempotentność powtórnej aktywacji i anulowania.
+  * Zabezpieczenie przed reaktywacją anulowanej subskrypcji (`InvalidStateTransitionError`).
+  * Zabezpieczenie przed oznaczeniem zaległości (`mark_past_due`) z innych stanów niż `ACTIVE`.
+  * Rejestrowanie zapytań API oraz blokada wartości ujemnych (`ValueError`).
+  * Zmiana przypisanego planu z walidacją instancji (`change_plan`).
+
+* **[test/unit/test_pricing_strategy.py](test/unit/test_pricing_strategy.py) (6 testów):**
+  * Obliczanie stałego abonamentu ryczałtowego (`FlatRatePricingStrategy`) niezależnie od liczby zapytań.
+  * Zerowa dopłata w cenniku progowym (`TieredUsagePricingStrategy`), gdy zużycie mieści się w limicie wliczonym w plan.
+  * Naliczanie dopłaty progowej w pierwszym przedziale (do 5000 req po 0.05 PLN).
+  * Naliczanie dopłaty progowej w drugim przedziale (powyżej 5000 req po 0.02 PLN).
+  * Rzucanie `ValueError` przy ujemnych jednostkach zużycia dla obu strategii.
+
+* **[test/unit/test_proration_engine.py](test/unit/test_proration_engine.py) (9 testów):**
+  * Obliczanie 100% kredytu w dniu 0 oraz 50% kredytu w 15. dniu 30-dniowego cyklu.
+  * Obliczanie zerowego kredytu w ostatnim (30.) dniu cyklu.
+  * Kalkulacja dopłaty netto przy przejściu na wyższą taryfę (*upgrade*).
+  * Kalkulacja salda kredytowego przy przejściu na niższą taryfę (*downgrade*).
+  * Blokada migracji pomiędzy różnymi walutami rozliczeniowymi (`ValueError`).
+  * Walidacja przekroczenia długości cyklu oraz ujemnych wartości dni.
+
+* **[test/unit/test_billing_service.py](test/unit/test_billing_service.py) (8 testów):**
+  * Tworzenie i zapisywanie aktywnej subskrypcji w repozytorium.
+  * Wyliczanie miesięcznej faktury z uwzględnieniem zarejestrowanego zużycia i strategii cenowej.
+  * Orkiestracja migracji planu (obliczenie kwot, aktualizacja stanu encji i repozytorium).
+  * Anulowanie subskrypcji i utrwalenie zmiany statusu.
+  * Obsługa wyjątków `KeyError` przy operacjach na nieistniejących identyfikatorach.
+  * Pobieranie listy wszystkich zarejestrowanych subskrypcji.
+
+* **[test/unit/test_repository.py](test/unit/test_repository.py) (5 testów):**
+  * Zapis i pobieranie subskrypcji po ID z pamięci podręcznej.
+  * Zwracanie `None` przy braku rekordu.
+  * Pobieranie listy wszystkich subskrypcji.
+  * Usuwanie subskrypcji po identyfikatorze.
+  * Czyszczenie całego magazynu danych (`clear()`).
+
+---
+
+### 2. Testy integracyjne (`test/integration/`)
+Testy integracyjne weryfikują współpracę warstwy prezentacji, routingu Flask, walidacji wejścia oraz logiki domenowej:
+
+* **[test/integration/test_web_routes.py](test/integration/test_web_routes.py) (16 testów):**
+  * `test_should_render_dashboard_with_200_ok`: Poprawne renderowanie głównego panelu nawigacyjnego.
+  * `test_should_return_plans_catalog_via_json_api`: Pobranie katalogu taryf przez REST API (`200 OK`).
+  * `test_should_calculate_proration_via_rest_api`: Dynamiczne wyliczenie rozliczenia proration przez endpoint `/api/proration/calculate`.
+  * `test_should_return_400_when_proration_api_receives_invalid_payload`: Odrzucenie nieprawidłowego payloadu JSON w kalkulatorze.
+  * `test_should_return_422_when_proration_api_receives_out_of_bound_day`: Obsługa błędu zakresu, gdy dzień przekracza cykl.
+  * `test_should_create_new_subscription_via_form_post`: Rejestracja nowej subskrypcji formularzem HTML z przekierowaniem.
+  * `test_should_return_400_when_creating_subscription_with_missing_fields`: Walidacja brakujących pól formularza.
+  * `test_should_return_400_when_creating_subscription_with_invalid_tier`: Walidacja nieprawidłowego identyfikatora taryfy.
+  * `test_should_migrate_subscription_and_redirect_to_dashboard`: Zmiana planu subskrypcji formularzem HTML.
+  * `test_should_return_404_when_migrating_non_existent_subscription`: Zwrócenie kodu 404 przy migracji nieznanej subskrypcji.
+  * `test_should_return_400_when_migrating_with_invalid_day_format`: Zwrócenie kodu 400 przy nieliczbowym dniu cyklu.
+  * `test_should_return_422_when_migrating_with_day_exceeding_cycle`: Zwrócenie kodu 422 przy dniu poza zakresem cyklu.
+  * `test_should_cancel_subscription_via_form_post`: Poprawne anulowanie subskrypcji przez żądanie POST.
+  * `test_should_return_404_when_cancelling_non_existent_subscription`: Obsługa błędu 404 przy anulowaniu nieistniejącego rekordu.
+  * `test_should_render_invoice_page_with_200_ok`: Wyświetlenie wizualnej faktury dla aktywnej subskrypcji.
+  * `test_should_return_404_when_viewing_invoice_for_non_existent_subscription`: Zwrócenie kodu 404 przy próbie podglądu faktury nieistniejącej subskrypcji.
+
+---
+
+### 3. Uruchomienie testów i raport pokrycia
+
+#### Uruchomienie pełnego pakietu testów:
 ```bash
 python -m unittest discover -s test -p "test_*.py" -v
 ```
 
-### Badanie pokrycia kodu (Coverage)
+#### Badanie pokrycia kodu (Coverage):
 ```bash
 python -m coverage run -m unittest discover -s test -p "test_*.py"
 python -m coverage report -m
 ```
 
-> **Uwaga:** Szczegółowy wykaz testów jednostkowych i integracyjnych z odnośnikami do plików źródłowych stanowi przedmiot **Etapu 2** harmonogramu projektu.
+#### Raport pokrycia kodu (Wynik: 99%):
+```text
+Name                               Stmts   Miss Branch BrPart  Cover   Missing
+------------------------------------------------------------------------------
+src\config.py                          9      0      0      0   100%
+src\models\currency.py                 5      0      0      0   100%
+src\models\money.py                   61      0     24      0   100%
+src\models\plan.py                    22      0      6      0   100%
+src\models\subscription.py            38      0     10      0   100%
+src\repositories\base.py               7      0      0      0   100%
+src\repositories\in_memory.py         15      0      0      0   100%
+src\services\billing_service.py       41      0      6      0   100%
+src\services\pricing_strategy.py      31      1      6      0    97%   20
+src\services\proration_engine.py      43      0     10      0   100%
+------------------------------------------------------------------------------
+TOTAL                                272      1     62      0    99%
+```
+
 
 ---
 
