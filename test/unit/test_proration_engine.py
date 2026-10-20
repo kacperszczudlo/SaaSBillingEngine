@@ -85,6 +85,20 @@ class TestProrationEngine(unittest.TestCase):
         # Assert
         self.assertEqual(result.credit_balance.amount, Decimal("30.00"))
 
+    def test_should_raise_value_error_when_migrating_between_different_currencies(self):
+        # Arrange
+        pln_price = Money(Decimal("60.00"), Currency.PLN)
+        eur_price = Money(Decimal("60.00"), Currency.EUR)
+
+        # Act & Assert
+        with self.assertRaises(ValueError):
+            self.engine.calculate_migration(
+                current_price=pln_price,
+                new_price=eur_price,
+                current_day=15,
+                total_cycle_days=30,
+            )
+
     def test_should_raise_value_error_when_current_day_exceeds_cycle_days(self):
         # Arrange
         invalid_day = 35
@@ -102,3 +116,12 @@ class TestProrationEngine(unittest.TestCase):
         # Act & Assert
         with self.assertRaises(ValueError):
             self.engine.calculate_unused_credit(self.starter_price, current_day, invalid_cycle_days)
+
+    def test_should_raise_value_error_when_current_day_is_negative(self):
+        # Arrange
+        negative_day = -5
+        cycle_days = 30
+
+        # Act & Assert
+        with self.assertRaises(ValueError):
+            self.engine.calculate_unused_credit(self.starter_price, negative_day, cycle_days)
