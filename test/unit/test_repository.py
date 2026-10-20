@@ -68,3 +68,13 @@ class TestInMemorySubscriptionRepository(unittest.TestCase):
 
         # Assert
         self.assertIsNone(self.repository.get_by_id("sub-101"))
+
+    def test_should_clear_all_subscriptions_from_repository(self):
+        # Arrange
+        self.repository.save(self.subscription)
+
+        # Act
+        self.repository.clear()
+
+        # Assert
+        self.assertEqual(len(self.repository.list_all()), 0)
