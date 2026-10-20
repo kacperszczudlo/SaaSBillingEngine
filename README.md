@@ -25,22 +25,22 @@ Prowadzący: **dr inż. Tomasz Gądek**
 ---
 
 ## Temat projektu
-**SaaSBillingEngine — System rozliczeń subskrypcyjnych i fakturowania SaaS**
+**SaaSBillingEngine: System rozliczeń subskrypcyjnych i fakturowania SaaS**
 
 ---
 
 ## Opis projektu
-**SaaSBillingEngine** to modułowy silnik rozliczeń abonamentowych dla platform typu Software-as-a-Service (SaaS), zaprojektowany zgodnie z paradygmatami **Domain-Driven Design (DDD)**, zasadami **SOLID** oraz standardami czystego kodu.
+**SaaSBillingEngine** to silnik rozliczeń abonamentowych dla platform Software-as-a-Service (SaaS), zaprojektowany zgodnie z paradygmatami **Domain-Driven Design (DDD)**, zasadami **SOLID** oraz standardami czystego kodu.
 
 Główne odpowiedzialności systemu:
 1. **Proration Engine (Rozliczenia proporcjonalne):** Precyzyjne wyliczanie wartości niewykorzystanego abonamentu, kosztu nowego planu za pozostałe dni oraz kwoty dopłaty netto lub salda kredytowego przy migracji planu (upgrade/downgrade) w trakcie 30-dniowego cyklu rozliczeniowego.
 2. **Precyzyjna arytmetyka finansowa (`Money` Value Object):** Całkowita eliminacja błędów zmiennoprzecinkowych typu `float` na rzecz obiektów niezmiennych operujących na typie `Decimal` z zaokrągleniem bankowym (`ROUND_HALF_UP`).
-3. **Wzorzec Strategy w taryfikacji:** Elastyczne modele naliczania opłat:
-   * `FlatRatePricingStrategy` — stała opłata abonamentowa (ryczałt),
-   * `TieredUsagePricingStrategy` — model progowy z automatycznymi dopłatami za nadmiarowe zapytania API ponad limit w planie.
-4. **Wzorzec State w cyklu życia subskrypcji:** Enkapsulacja dozwolonych przejść stanów w modelu (`TRIAL` &rarr; `ACTIVE` &rarr; `PAST_DUE` &rarr; `CANCELLED`) z blokadą niepoprawnych operacji.
+3. **Wzorzec Strategy w taryfikacji:** Modele naliczania opłat:
+   * `FlatRatePricingStrategy`: stała opłata abonamentowa (ryczałt),
+   * `TieredUsagePricingStrategy`: model progowy z dopłatami za nadmiarowe zapytania API ponad limit w planie.
+4. **Wzorzec State w cyklu życia subskrypcji:** Enkapsulacja dozwolonych przejść stanów w modelu (`TRIAL` -> `ACTIVE` -> `PAST_DUE` -> `CANCELLED`) z blokadą niepoprawnych operacji.
 5. **Wzorzec Repository (DIP):** Całkowita izolacja warstwy biznesowej od magazynu danych dzięki protokołowi `SubscriptionRepository` i implementacji `InMemorySubscriptionRepository`.
-6. **Interfejs graficzny Product UI:** Panel webowy zbudowany we Flasku i Tailwind CSS (konsola *Proration Workbench* na żywo, katalog taryf, rejestr subskrypcji oraz gotowy do druku widok faktury rozliczeniowej B2B).
+6. **Interfejs graficzny Product UI:** Panel webowy zbudowany we Flasku i Tailwind CSS (kalkulator rozliczeń proporcjonalnych na żywo, katalog taryf, rejestr subskrypcji oraz gotowy do druku widok faktury rozliczeniowej B2B).
 
 ---
 
@@ -84,7 +84,7 @@ Aplikacja dostępna jest w przeglądarce pod adresem:
 
 ## Testy
 
-System posiada kompleksowy zestaw **84 testów automatycznych** (68 jednostkowych + 16 integracyjnych) ustandaryzowanych według konwencji **AAA (Arrange-Act-Assert)** z jedną logiczną asercją na test.
+Pakiet testowy obejmuje **84 testy automatyczne** (68 jednostkowych oraz 16 integracyjnych) przygotowane w konwencji **AAA (Arrange-Act-Assert)** z jedną logiczną asercją na test.
 
 ### 1. Testy jednostkowe (`test/unit/`)
 Wszystkie testy jednostkowe badają logikę biznesową w pełnej izolacji, bez udziału operacji wejścia/wyjścia czy bazy danych:
@@ -105,7 +105,7 @@ Wszystkie testy jednostkowe badają logikę biznesową w pełnej izolacji, bez u
 
 * **[test/unit/test_subscription.py](test/unit/test_subscription.py) (13 testów):**
   * Domyślna inicjalizacja subskrypcji w stanie początkowym `TRIAL`.
-  * Dozwolone przejścia stanów cyklu życia: `TRIAL` &rarr; `ACTIVE` &rarr; `PAST_DUE` &rarr; `ACTIVE` oraz anulowanie do `CANCELLED`.
+  * Dozwolone przejścia stanów cyklu życia: `TRIAL` -> `ACTIVE` -> `PAST_DUE` -> `ACTIVE` oraz anulowanie do `CANCELLED`.
   * Idempotentność powtórnej aktywacji i anulowania.
   * Zabezpieczenie przed reaktywacją anulowanej subskrypcji (`InvalidStateTransitionError`).
   * Zabezpieczenie przed oznaczeniem zaległości (`mark_past_due`) z innych stanów niż `ACTIVE`.
@@ -297,13 +297,13 @@ Umożliwia dynamiczne przeliczenie kwoty dopłaty lub salda kredytowego przy prz
   ```
 
 * **Odpowiedzi błędów:**
-  * **`400 Bad Request`** – Błędne parametry wejściowe (brak wymaganych pól, nieznany plan, niepoprawny format liczbowy):
+  * **`400 Bad Request`**: Błędne parametry wejściowe (brak wymaganych pól, nieznany plan, niepoprawny format liczbowy):
     ```json
     {
       "error": "Nieprawidłowe parametry kalkulacji"
     }
     ```
-  * **`422 Unprocessable Entity`** – Naruszenie reguł domenowych (np. dzień cyklu przekracza długość cyklu lub wartość ujemna):
+  * **`422 Unprocessable Entity`**: Naruszenie reguł domenowych (np. dzień cyklu przekracza długość cyklu lub wartość ujemna):
     ```json
     {
       "error": "current_day (35) cannot exceed total_cycle_days (30)"
@@ -400,7 +400,7 @@ Generuje czytelny dokument rozliczeniowy w widoku HTML dla podanej subskrypcji.
 
 ## Przypadki testowe dla testera manualnego (TestCase)
 
-Poniższe tabele zawierają zestaw **10 formalnych scenariuszy testowych** dla testera manualnego, przygotowanych zgodnie z wytycznymi laboratoryjnymi (format ze strony 4 instrukcji). Każdy scenariusz weryfikuje kluczową ścieżkę funkcjonalną systemu.
+Poniższe tabele zawierają zestaw **10 scenariuszy testowych** dla testera manualnego, przygotowanych w formacie tabelarycznym ze strony 4 instrukcji laboratoryjnej.
 
 ---
 
