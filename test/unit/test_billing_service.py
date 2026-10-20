@@ -64,6 +64,11 @@ class TestBillingService(unittest.TestCase):
         # Assert
         self.assertEqual(bill.amount, Decimal("75.00"))
 
+    def test_should_raise_key_error_when_calculating_bill_for_non_existent_subscription(self):
+        # Act & Assert
+        with self.assertRaises(KeyError):
+            self.service.calculate_monthly_bill("non-existent-sub")
+
     def test_should_migrate_subscription_plan_and_update_repository(self):
         # Arrange: dzień 15 z 30 (połowa cyklu)
         self.service.create_subscription(
@@ -109,3 +114,19 @@ class TestBillingService(unittest.TestCase):
 
         # Assert
         self.assertEqual(cancelled_sub.status, SubscriptionStatus.CANCELLED)  # type: ignore
+
+    def test_should_raise_key_error_when_cancelling_non_existent_subscription(self):
+        # Act & Assert
+        with self.assertRaises(KeyError):
+            self.service.cancel_subscription("non-existent-sub")
+
+    def test_should_list_all_subscriptions_from_service(self):
+        # Arrange
+        self.service.create_subscription("sub-001", "cust-001", self.starter_plan)
+        self.service.create_subscription("sub-002", "cust-002", self.pro_plan)
+
+        # Act
+        all_subs = self.service.list_subscriptions()
+
+        # Assert
+        self.assertEqual(len(all_subs), 2)
