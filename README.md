@@ -399,7 +399,118 @@ Generuje czytelny dokument rozliczeniowy w widoku HTML dla podanej subskrypcji.
 ---
 
 ## Przypadki testowe dla testera manualnego (TestCase)
-Szczegółowa macierz 10 formalnych scenariuszy testowych (ID, Warunki początkowe, Kroki testowe, Oczekiwany rezultat) zostanie dołączona w dokumentacji końcowej w ramach **Etapu 3** harmonogramu.
+
+Poniższe tabele zawierają zestaw **10 formalnych scenariuszy testowych** dla testera manualnego, przygotowanych zgodnie z wytycznymi laboratoryjnymi (format ze strony 4 instrukcji). Każdy scenariusz weryfikuje kluczową ścieżkę funkcjonalną systemu.
+
+---
+
+### Przypadek testowy TC001
+| Pole | Wartość |
+| :--- | :--- |
+| **ID** | `TC001` |
+| **Tytuł** | Poprawne renderowanie katalogu planów i cennika na stronie głównej |
+| **Warunki początkowe** | Serwer aplikacji uruchomiony lokalnie pod adresem `http://127.0.0.1:5000`. Przeglądarka internetowa otwarta. |
+| **Kroki testowe** | 1. Otwórz w przeglądarce adres `http://127.0.0.1:5000/`.<br>2. Zlokalizuj sekcję "Dostępne plany subskrypcyjne".<br>3. Zweryfikuj obecność kafelków taryf: Starter, Professional, Enterprise.<br>4. Sprawdź wyświetlane ceny oraz limity zapytań API dla każdego planu. |
+| **Oczekiwany rezultat** | Strona zwraca kod `200 OK`. Wyświetlane są 3 plany: Starter (`49.00 PLN`, 1000 req), Professional (`149.00 PLN`, 5000 req) oraz Enterprise (`499.00 PLN`, 25000 req). Układ jest responsywny i czytelny. |
+
+---
+
+### Przypadek testowy TC002
+| Pole | Wartość |
+| :--- | :--- |
+| **ID** | `TC002` |
+| **Tytuł** | Dynamiczne przeliczenie proporcjonalnej migracji w kalkulatorze (upgrade Starter -> Professional w połowie cyklu) |
+| **Warunki początkowe** | Użytkownik znajduje się na stronie głównej `http://127.0.0.1:5000/`. |
+| **Kroki testowe** | 1. Przewiń widok do sekcji "Kalkulator proporcjonalnego rozliczenia (Proration)".<br>2. W polu "Obecny plan" wybierz `Starter (49.00 PLN)`.<br>3. W polu "Nowy plan" wybierz `Professional (149.00 PLN)`.<br>4. W polu "Dzień zmiany w cyklu" wprowadź wartość `15`.<br>5. W polu "Długość cyklu" pozostaw domyślną wartość `30`.<br>6. Kliknij przycisk "Przelicz rozliczenie". |
+| **Oczekiwany rezultat** | Aplikacja bez przeładowania strony (AJAX) prezentuje wynik kalkulacji:<br>- Niewykorzystany kredyt ze starego planu: `24.50 PLN`<br>- Koszt nowego planu za pozostały okres: `74.50 PLN`<br>- Kwota netto do dopłaty: `50.00 PLN`<br>- Saldo kredytowe: `0.00 PLN`. |
+
+---
+
+### Przypadek testowy TC003
+| Pole | Wartość |
+| :--- | :--- |
+| **ID** | `TC003` |
+| **Tytuł** | Blokada kalkulacji proration przy przekroczeniu długości cyklu rozliczeniowego |
+| **Warunki początkowe** | Użytkownik znajduje się na stronie głównej `http://127.0.0.1:5000/`. |
+| **Kroki testowe** | 1. W sekcji kalkulatora proration wybierz obecny plan `Starter` i plan docelowy `Professional`.<br>2. W polu "Dzień zmiany w cyklu" wprowadź wartość `35` (przy długości cyklu `30`).<br>3. Kliknij przycisk "Przelicz rozliczenie" lub wyślij żądanie POST do `/api/proration/calculate`. |
+| **Oczekiwany rezultat** | Aplikacja odrzuca żądanie ze statusem `422 Unprocessable Entity` i wyświetla komunikat błędu informujący, że dzień zmiany nie może przekraczać łącznej liczby dni w cyklu. |
+
+---
+
+### Przypadek testowy TC004
+| Pole | Wartość |
+| :--- | :--- |
+| **ID** | `TC004` |
+| **Tytuł** | Rejestracja nowej subskrypcji przez formularz interfejsu użytkownika |
+| **Warunki początkowe** | Użytkownik znajduje się na stronie głównej `http://127.0.0.1:5000/`. |
+| **Kroki testowe** | 1. Zlokalizuj formularz "Aktywuj nową subskrypcję".<br>2. W polu "Identyfikator klienta" wpisz `acme-corp`.<br>3. W liście rozwijanej "Wybierz plan" wybierz `Professional (149.00 PLN)`.<br>4. Kliknij przycisk "Utwórz i aktywuj subskrypcję". |
+| **Oczekiwany rezultat** | Formularz wysyła żądanie `POST /subscriptions`. Następuje przekierowanie `302` do `/`. W tabeli "Zarejestrowane subskrypcje" pojawia się nowy wiersz z klientem `acme-corp`, planem `Professional`, statusem `ACTIVE` i zielonym znacznikiem aktywności. |
+
+---
+
+### Przypadek testowy TC005
+| Pole | Wartość |
+| :--- | :--- |
+| **ID** | `TC005` |
+| **Tytuł** | Walidacja pustego identyfikatora klienta przy tworzeniu subskrypcji |
+| **Warunki początkowe** | Użytkownik znajduje się na stronie głównej `http://127.0.0.1:5000/`. |
+| **Kroki testowe** | 1. Pozostaw pole "Identyfikator klienta" całkowicie puste.<br>2. Wybierz dowolny plan z listy rozwijanej (np. `Starter`).<br>3. Kliknij przycisk "Utwórz i aktywuj subskrypcję" (lub wyślij bezpośrednie żądanie POST z pustym polem). |
+| **Oczekiwany rezultat** | Formularz blokuje wysłanie (walidacja HTML5 `required`) lub serwer zwraca kod błędu `400 Bad Request` z komunikatem `"Brakujące wymagane pola customer_id lub plan_tier"`. Żadna nowa subskrypcja nie zostaje utworzona. |
+
+---
+
+### Przypadek testowy TC006
+| Pole | Wartość |
+| :--- | :--- |
+| **ID** | `TC006` |
+| **Tytuł** | Przeprowadzenie migracji taryfy subskrypcji z poziomu tabeli zarządczej |
+| **Warunki początkowe** | W systemie istnieje aktywna subskrypcja klienta `acme-corp` z taryfą `Starter`. |
+| **Kroki testowe** | 1. W wierszu subskrypcji klienta `acme-corp` zlokalizuj pole wyboru "Zmień plan".<br>2. Wybierz plan docelowy `Enterprise`.<br>3. Kliknij przycisk "Zmień". |
+| **Oczekiwany rezultat** | Żądanie `POST /subscriptions/<id>/migrate` zostaje przetworzone pomyślnie. Strona odświeża się (`302`). Wiersz klienta `acme-corp` wyświetla teraz plan `Enterprise`, a system przelicza proporcjonalnie saldo rozliczenia. |
+
+---
+
+### Przypadek testowy TC007
+| Pole | Wartość |
+| :--- | :--- |
+| **ID** | `TC007` |
+| **Tytuł** | Wyświetlenie i weryfikacja wizualnej faktury rozliczeniowej dla subskrypcji |
+| **Warunki początkowe** | W systemie istnieje aktywna subskrypcja (np. o identyfikatorze `sub-001`). |
+| **Kroki testowe** | 1. W tabeli subskrypcji kliknij przycisk "Faktura" przy wybranej subskrypcji (lub przejdź pod adres `http://127.0.0.1:5000/subscriptions/sub-001/invoice`).<br>2. Zweryfikuj nagłówek dokumentu, identyfikator faktury, dane klienta oraz datę wystawienia.<br>3. Sprawdź pozycje na fakturze: abonament bazowy oraz naliczone opłaty za zapytania API.<br>4. Sprawdź obecność przycisku powrotu do panelu głównego. |
+| **Oczekiwany rezultat** | Serwer zwraca stronę faktury z kodem `200 OK`. Dokument zawiera dokładne zestawienie pozycji rozliczeniowych, formatowane kwoty w `PLN`, status opłacenia oraz link powrotny do Dashboardu. |
+
+---
+
+### Przypadek testowy TC008
+| Pole | Wartość |
+| :--- | :--- |
+| **ID** | `TC008` |
+| **Tytuł** | Anulowanie subskrypcji i weryfikacja zmiany statusu w maszynie stanów |
+| **Warunki początkowe** | W systemie istnieje aktywna subskrypcja o statusie `ACTIVE`. |
+| **Kroki testowe** | 1. W tabeli subskrypcji odszukaj aktywną pozycję.<br>2. Kliknij czerwony przycisk "Anuluj".<br>3. Potwierdź chęć anulowania i poczekaj na przeładowanie strony. |
+| **Oczekiwany rezultat** | Serwer przetwarza żądanie `POST /subscriptions/<id>/cancel`. Status subskrypcji zmienia się na `CANCELLED` (szary badge). Przyciski zmiany planu oraz anulowania stają się nieaktywne lub zablokowane, uniemożliwiając modyfikację anulowanej umowy. |
+
+---
+
+### Przypadek testowy TC009
+| Pole | Wartość |
+| :--- | :--- |
+| **ID** | `TC009` |
+| **Tytuł** | Bezpośrednie pobranie katalogu taryf przez REST API (`GET /api/plans`) |
+| **Warunki początkowe** | Aplikacja uruchomiona, narzędzie curl lub przeglądarka dostępne. |
+| **Kroki testowe** | 1. Wykonaj w terminalu żądanie: `curl -s -X GET http://127.0.0.1:5000/api/plans -H "Accept: application/json"`.<br>2. Zweryfikuj kod statusu HTTP odpowiedzi.<br>3. Zweryfikuj nagłówek `Content-Type`.<br>4. Zweryfikuj strukturę tablicy obiektów JSON oraz obecność pól: `tier`, `name`, `base_price`, `currency`, `included_requests`. |
+| **Oczekiwany rezultat** | Status odpowiedzi to `200 OK`. `Content-Type` to `application/json`. Zwrócona tablica zawiera 3 poprawne obiekty JSON odpowiadające taryfom Starter, Professional i Enterprise z poprawnymi cenami bazowymi. |
+
+---
+
+### Przypadek testowy TC010
+| Pole | Wartość |
+| :--- | :--- |
+| **ID** | `TC010` |
+| **Tytuł** | Próba otwarcia faktury dla nieistniejącej subskrypcji (`404 Not Found`) |
+| **Warunki początkowe** | Aplikacja uruchomiona pod adresem `http://127.0.0.1:5000/`. |
+| **Kroki testowe** | 1. Wprowadź w pasku adresu przeglądarki URL: `http://127.0.0.1:5000/subscriptions/sub-nieistnieje-999/invoice`.<br>2. Naciśnij klawisz Enter.<br>3. Zweryfikuj kod odpowiedzi HTTP i treść strony. |
+| **Oczekiwany rezultat** | Serwer zwraca kod błędu `404 Not Found` z komunikatem JSON: `{"error": "Subskrypcja nie istnieje"}`. Aplikacja nie rzuca nieobsłużonego wyjątku `500 Internal Server Error`. |
 
 ---
 
