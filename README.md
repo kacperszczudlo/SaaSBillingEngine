@@ -203,19 +203,198 @@ TOTAL                                272      1     62      0    99%
 
 ## Dokumentacja API
 
-Aplikacja udostępnia interfejs REST API wykorzystywany przez interfejs oraz klientów zewnętrznych:
+Aplikacja udostępnia interfejs programistyczny HTTP (REST API) oraz punkty końcowe obsługujące interfejs graficzny Dashboard. Komunikacja maszynowa wykorzystuje format JSON oraz standardowe kody odpowiedzi HTTP (RFC 9110).
 
-| Metoda HTTP | Endpoint | Opis |
-| :--- | :--- | :--- |
-| `GET` | `/` | Główny pulpit nawigacyjny (Dashboard UI) |
-| `GET` | `/api/plans` | Pobranie pełnego katalogu planów subskrypcyjnych w formacie JSON |
-| `POST` | `/api/proration/calculate` | Obliczenie proporcjonalnej zmiany taryfy (REST API dla symulatora) |
-| `POST` | `/subscriptions` | Utworzenie i aktywacja nowej subskrypcji |
-| `POST` | `/subscriptions/<id>/migrate` | Przeprowadzenie migracji planu subskrypcji |
-| `POST` | `/subscriptions/<id>/cancel` | Anulowanie subskrypcji |
-| `GET` | `/subscriptions/<id>/invoice` | Wygenerowanie widoku faktury rozliczeniowej |
+### Zestawienie punktów końcowych
 
-> **Uwaga:** Pełna specyfikacja kontraktów żądań i odpowiedzi JSON zostanie rozszerzona w ramach **Etapu 3**.
+| Metoda HTTP | Endpoint | Format wejścia | Format wyjścia | Opis |
+| :--- | :--- | :--- | :--- | :--- |
+| `GET` | `/` | Brak | `text/html` | Główny pulpit nawigacyjny (Dashboard UI) |
+| `GET` | `/api/plans` | Brak | `application/json` | Pobranie pełnego katalogu planów subskrypcyjnych |
+| `POST` | `/api/proration/calculate` | `application/json` | `application/json` | Dynamiczne obliczenie proporcjonalnej zmiany taryfy |
+| `POST` | `/subscriptions` | Form data | HTML / Redirect (`302`) | Utworzenie i aktywacja nowej subskrypcji |
+| `POST` | `/subscriptions/<id>/migrate` | Form data | HTML / Redirect (`302`) | Przeprowadzenie migracji planu subskrypcji |
+| `POST` | `/subscriptions/<id>/cancel` | Form data | HTML / Redirect (`302`) | Anulowanie subskrypcji |
+| `GET` | `/subscriptions/<id>/invoice` | Brak | `text/html` | Wygenerowanie widoku faktury rozliczeniowej |
+
+---
+
+### Szczegółowa specyfikacja kontraktów API
+
+#### 1. Pobranie katalogu planów (`GET /api/plans`)
+Zwraca listę wszystkich dostępnych taryf subskrypcyjnych z ich cenami bazowymi oraz limitami wliczonych zapytań API.
+
+* **Nagłówki żądania:**
+  ```http
+  Accept: application/json
+  ```
+* **Odpowiedź sukcesu (`200 OK`):**
+  ```json
+  [
+    {
+      "tier": "starter",
+      "name": "Starter",
+      "base_price": "49.00",
+      "currency": "PLN",
+      "included_requests": 1000,
+      "description": "Dla małych zespołów i początkujących projektów"
+    },
+    {
+      "tier": "professional",
+      "name": "Professional",
+      "base_price": "149.00",
+      "currency": "PLN",
+      "included_requests": 5000,
+      "description": "Dla rozwijających się firm z większym ruchem API"
+    },
+    {
+      "tier": "enterprise",
+      "name": "Enterprise",
+      "base_price": "499.00",
+      "currency": "PLN",
+      "included_requests": 25000,
+      "description": "Maksymalna wydajność, dedykowane wsparcie i brak limitów"
+    }
+  ]
+  ```
+
+---
+
+#### 2. Kalkulacja proporcjonalnej migracji (`POST /api/proration/calculate`)
+Umożliwia dynamiczne przeliczenie kwoty dopłaty lub salda kredytowego przy przejściu między planami w trakcie trwania cyklu rozliczeniowego.
+
+* **Nagłówki żądania:**
+  ```http
+  Content-Type: application/json
+  Accept: application/json
+  ```
+* **Przykładowy payload żądania:**
+  ```json
+  {
+    "from_tier": "starter",
+    "to_tier": "professional",
+    "current_day": 15,
+    "total_cycle_days": 30
+  }
+  ```
+* **Parametry wejściowe:**
+  * `from_tier` (string, wymagane): Identyfikator obecnego planu (`starter`, `professional`, `enterprise`).
+  * `to_tier` (string, wymagane): Identyfikator planu docelowego.
+  * `current_day` (integer, opcjonalne, domyślnie `15`): Dzień cyklu, w którym dokonywana jest zmiana (`0` - `total_cycle_days`).
+  * `total_cycle_days` (integer, opcjonalne, domyślnie `30`): Łączna długość cyklu rozliczeniowego w dniach.
+
+* **Odpowiedź sukcesu (`200 OK`):**
+  ```json
+  {
+    "unused_credit": "24.50",
+    "new_plan_charge": "74.50",
+    "net_amount_due": "50.00",
+    "credit_balance": "0.00",
+    "remaining_days": 15,
+    "total_cycle_days": 30,
+    "currency": "PLN"
+  }
+  ```
+
+* **Odpowiedzi błędów:**
+  * **`400 Bad Request`** – Błędne parametry wejściowe (brak wymaganych pól, nieznany plan, niepoprawny format liczbowy):
+    ```json
+    {
+      "error": "Nieprawidłowe parametry kalkulacji"
+    }
+    ```
+  * **`422 Unprocessable Entity`** – Naruszenie reguł domenowych (np. dzień cyklu przekracza długość cyklu lub wartość ujemna):
+    ```json
+    {
+      "error": "current_day (35) cannot exceed total_cycle_days (30)"
+    }
+    ```
+
+---
+
+#### 3. Tworzenie nowej subskrypcji (`POST /subscriptions`)
+Tworzy i natychmiast aktywuje nową subskrypcję dla wskazanego klienta.
+
+* **Nagłówki żądania:**
+  ```http
+  Content-Type: application/x-www-form-urlencoded
+  ```
+* **Ciało żądania (Form Data):**
+  * `customer_id` (string, wymagane): Identyfikator klienta (np. `cust-101`).
+  * `plan_tier` (string, wymagane): Poziom planu (`starter`, `professional`, `enterprise`).
+
+* **Odpowiedź sukcesu (`302 Found`):**
+  * Przekierowanie nagłówkiem `Location: /` na główny pulpit nawigacyjny.
+* **Odpowiedzi błędów:**
+  * **`400 Bad Request`**:
+    ```json
+    {
+      "error": "Brakujące wymagane pola customer_id lub plan_tier"
+    }
+    ```
+  * **`404 Not Found`**:
+    ```json
+    {
+      "error": "Plan nie został odnaleziony w katalogu"
+    }
+    ```
+
+---
+
+#### 4. Migracja taryfy subskrypcji (`POST /subscriptions/<subscription_id>/migrate`)
+Zmienia plan przypisany do istniejącej subskrypcji z rozliczeniem proporcjonalnym (proration).
+
+* **Parametry ścieżki:**
+  * `subscription_id` (string, wymagane): Unikalny identyfikator subskrypcji (np. `sub-001`).
+* **Ciało żądania (Form Data):**
+  * `target_tier` (string, wymagane): Poziom taryfy docelowej.
+  * `current_day` (integer, opcjonalne, domyślnie `15`): Dzień cyklu w momencie zmiany.
+
+* **Odpowiedź sukcesu (`302 Found`):**
+  * Przekierowanie nagłówkiem `Location: /` na główny pulpit nawigacyjny.
+* **Odpowiedzi błędów:**
+  * **`400 Bad Request`**: Nieprawidłowy plan docelowy lub format liczbowy dnia.
+  * **`404 Not Found`**:
+    ```json
+    {
+      "error": "Subskrypcja sub-999 nie istnieje"
+    }
+    ```
+  * **`422 Unprocessable Entity`**: Dzień cyklu poza dozwolonym zakresem.
+
+---
+
+#### 5. Anulowanie subskrypcji (`POST /subscriptions/<subscription_id>/cancel`)
+Zmienia status subskrypcji na `CANCELLED` zgodnie z regułami maszyny stanów.
+
+* **Parametry ścieżki:**
+  * `subscription_id` (string, wymagane): Identyfikator anulowanej subskrypcji.
+* **Odpowiedź sukcesu (`302 Found`):**
+  * Przekierowanie nagłówkiem `Location: /`.
+* **Odpowiedzi błędów:**
+  * **`404 Not Found`**:
+    ```json
+    {
+      "error": "Subskrypcja sub-999 nie istnieje"
+    }
+    ```
+
+---
+
+#### 6. Podgląd faktury rozliczeniowej (`GET /subscriptions/<subscription_id>/invoice`)
+Generuje czytelny dokument rozliczeniowy w widoku HTML dla podanej subskrypcji.
+
+* **Parametry ścieżki:**
+  * `subscription_id` (string, wymagane): Identyfikator subskrypcji.
+* **Odpowiedź sukcesu (`200 OK`):**
+  * Zwraca wyrenderowany szablon HTML `invoice.html` z wyszczególnieniem opłaty bazowej, wykorzystanych zapytań i kwoty końcowej.
+* **Odpowiedzi błędów:**
+  * **`404 Not Found`**:
+    ```json
+    {
+      "error": "Subskrypcja nie istnieje"
+    }
+    ```
 
 ---
 
